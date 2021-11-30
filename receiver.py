@@ -55,7 +55,6 @@ if __name__ == '__main__':
     receiver = Receiver(rIP, rPort, sIP, sPort)
     receiver.timer.start()
     while True:
-        print("Waiting for sender...")
         # receive packet
         data_pkt, addr = receiver.receive_packet()
 
