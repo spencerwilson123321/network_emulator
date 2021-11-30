@@ -10,13 +10,13 @@ from timer import Timer
 class Receiver:
 
     def __init__(self, receiverIP, receiverPort, senderIP, senderPort):
-       self.sender_address = (senderIP, senderPort)
-       self.receiver_address = (receiverIP, receiverPort)
-       self.receiver_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-       self.receiver_socket.bind(self.receiver_address)
-       self.expected_seq_num = 0
-       self.last_acked_packet = None
-       self.timer = Timer()
+        self.sender_address = (senderIP, senderPort)
+        self.receiver_address = (receiverIP, receiverPort)
+        self.receiver_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.receiver_socket.bind(self.receiver_address)
+        self.expected_seq_num = 0
+        self.last_acked_packet = None
+        self.timer = Timer()
 
     # this will generate an ack packet for the given data packet.
     def generate_ack_packet(self, data_pkt):
