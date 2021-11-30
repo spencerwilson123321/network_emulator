@@ -3,6 +3,7 @@ from packet import PacketType
 import socket
 import pickle
 from timer import Timer
+import math
 
 
 class Sender:
@@ -11,10 +12,13 @@ class Sender:
         self.receiver_address = (receiverIP, receiverPort)
         self.sender_address = (senderIP, senderPort)
         self.window_size = 4
-        # measured in ms.
-        self.alpha = 0.15
-        self.timer_thresh = 50.0
-        self.timer_thresh_margin = 500.0
+        # gain constant used in retransmit timer
+        self.alpha = 0.7
+        # Predicted rtt and deviation
+        self.predicted_rtt = 80
+        self.predicted_deviation = 15
+        # Time out threshold
+        self.tot = (4*self.predicted_deviation) + self.predicted_rtt
         self.timer = Timer()
         self.window = []
         self.num_acks_received = 0
@@ -52,6 +56,8 @@ class Sender:
         for x in self.window:
             # for each x serialize each object and send to receiver using senderSocket.
             self.sender_socket.sendto(pickle.dumps(x), self.receiver_address)
+            # Also make a print statement to the console so we can see what is being sent.
+            print("Sending", x, "to", self.receiver_address)
         # clear window afterwards
         self.window = []
         self.num_acks_received = 0
@@ -63,26 +69,17 @@ class Sender:
         data, addr = self.sender_socket.recvfrom(1024)
         return pickle.loads(data), addr
 
-    def calculate_avg_rtt(self):
-        avg = 0
-        for rtt in self.rtt_times:
-            avg = avg + rtt
-        return avg/len(self.rtt_times)
+    # artt = actual round trip time
+    def update_retransmission_timer_info(self, actual_rtt):
+        # avg RTT using techniques from Jacobson's paper
+        actual_deviation = abs(self.predicted_rtt - actual_rtt)
+        self.predicted_rtt = self.predicted_rtt*self.alpha + (1 - self.alpha)*actual_rtt
+        self.predicted_deviation = self.alpha*self.predicted_deviation + (1 - self.alpha)*actual_deviation
+        # Update timeout timer
+        self.tot = (8 * self.predicted_deviation) + self.predicted_rtt
 
-    def adjust_timer_thresh(self):
-        if len(self.rtt_times) != 0:
-            avg_rtt = self.calculate_avg_rtt()
-            # Once we calculate the average rtt, we need to empty the rtt_times list.
-            self.rtt_times = []
-            # self.timer_thresh = self.alpha * self.timer_thresh + (1 - self.alpha) * avg_rtt
-            self.timer_thresh = avg_rtt * self.window_size
-        # If no acks were received then increase the timer
-        # by half the current timer.
-        else:
-            self.timer_thresh = self.timer_thresh+(self.timer_thresh / 2)
-
-    def add_rtt_to_rtt_list(self):
-        self.rtt_times.append(self.timer.check_time())
+    def exponential_back_off_timer(self):
+        self.tot = self.tot*3
 
 
 if __name__ == '__main__':
@@ -105,18 +102,20 @@ if __name__ == '__main__':
 while True:
     # Determine packets to send, send, start timer.
     sender.generate_window()
-    sender.adjust_timer_thresh()
+    # sender.adjust_timer_thresh()
     sender.send_all_in_window()
     sender.start_timer()
     # Start checking for acknowledgements.
     while True:
-        if sender.check_timer() > sender.timer_thresh:
+        if sender.check_timer() > sender.tot:
             print("Timeout")
+            # Exponentially increase back off timer.
+            sender.exponential_back_off_timer()
             # Stop timer, and then break out of loop.
             sender.stop_timer()
             break
         if sender.last_biggest_ack == sender.last_highest_sequence_number:
-            print("Received big ack")
+            print("All Data has been Ack'd!")
             break
         try:
             ack, addr = sender.receive_packet()
@@ -128,7 +127,10 @@ while True:
         # Check and set last biggest ack
         if ack.seq_num > sender.last_biggest_ack:
             sender.last_biggest_ack = ack.seq_num
-        # Add RTT for this ack to rtt_times for dynamic retransmmission timer.
-        sender.add_rtt_to_rtt_list()
+
+        # Update rolling average for RTT.
+        sender.update_retransmission_timer_info(sender.timer.check_time())
+
         # Increment number of acks received.
         sender.increment_acks_received()
+

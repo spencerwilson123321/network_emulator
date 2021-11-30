@@ -16,9 +16,9 @@ class Timer:
         """Stop the timer, and report the elapsed time"""
         elapsed_time = time.perf_counter() - self._start_time
         self._start_time = None
-        return elapsed_time*1000
+        return float(format(elapsed_time*1000, ".2f"))
 
     # returns the elapsed time (ms) since start, but doesn't stop the timer.
     def check_time(self):
         elapsed_time = time.perf_counter() - self._start_time
-        return elapsed_time*1000
+        return float(format(elapsed_time*1000, ".2f"))
