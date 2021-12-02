@@ -1,9 +1,11 @@
+import traceback
+
 from packet import Packet
 from packet import PacketType
 import socket
 import pickle
 from timer import Timer
-import math
+import sys
 
 
 class Sender:
@@ -69,7 +71,6 @@ class Sender:
         data, addr = self.sender_socket.recvfrom(1024)
         return pickle.loads(data), addr
 
-    # artt = actual round trip time
     def update_retransmission_timer_info(self, actual_rtt):
         # avg RTT using techniques from Jacobson's paper
         actual_deviation = abs(self.predicted_rtt - actual_rtt)
@@ -82,7 +83,7 @@ class Sender:
         self.tot = self.tot*3
 
 
-if __name__ == '__main__':
+def main():
 
     # Receiver IP and Port for socket connection.
     rIP = None
@@ -99,38 +100,48 @@ if __name__ == '__main__':
 
     sender = Sender(rIP, rPort, sIP, sPort)
 
-while True:
-    # Determine packets to send, send, start timer.
-    sender.generate_window()
-    # sender.adjust_timer_thresh()
-    sender.send_all_in_window()
-    sender.start_timer()
-    # Start checking for acknowledgements.
     while True:
-        t = sender.check_timer()
-        if t > float(sender.tot):
-            print("Timeout, tot =", format(sender.tot, ".2f"), "time =", t)
-            # Exponentially increase back off timer.
-            sender.exponential_back_off_timer()
-            # Stop timer, and then break out of loop.
-            sender.stop_timer()
-            break
-        if sender.last_biggest_ack == sender.last_highest_sequence_number:
-            print("All Data has been Ack'd!")
-            break
-        try:
-            ack, addr = sender.receive_packet()
-            if ack is None:
+        # Determine packets to send, send, start timer.
+        sender.generate_window()
+        # sender.adjust_timer_thresh()
+        sender.send_all_in_window()
+        sender.start_timer()
+        # Start checking for acknowledgements.
+        while True:
+            t = sender.check_timer()
+            if t > float(sender.tot):
+                print("Timeout, tot =", format(sender.tot, ".2f"), "time =", t)
+                # Exponentially increase back off timer.
+                sender.exponential_back_off_timer()
+                # Stop timer, and then break out of loop.
+                sender.stop_timer()
+                break
+            if sender.last_biggest_ack == sender.last_highest_sequence_number:
+                print("All Data has been Ack'd!")
+                break
+            try:
+                ack, addr = sender.receive_packet()
+                if ack is None:
+                    continue
+            except BlockingIOError:
                 continue
-        except BlockingIOError:
-            continue
-        print("Received ack:", ack, "from", addr)
-        # Check and set last biggest ack
-        if ack.seq_num > sender.last_biggest_ack:
-            sender.last_biggest_ack = ack.seq_num
+            print("Received ack:", ack, "from", addr)
+            # Check and set last biggest ack
+            if ack.seq_num > sender.last_biggest_ack:
+                sender.last_biggest_ack = ack.seq_num
+            # Update rolling average for RTT.
+            sender.update_retransmission_timer_info(sender.timer.check_time())
+            # Increment number of acks received.
+            sender.increment_acks_received()
 
-        # Update rolling average for RTT.
-        sender.update_retransmission_timer_info(sender.timer.check_time())
 
-        # Increment number of acks received.
-        sender.increment_acks_received()
+if __name__ == '__main__':
+
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("Shutting down...")
+    except Exception:
+        traceback.print_exc(file=sys.stdout)
+    sys.exit(-1)
+
