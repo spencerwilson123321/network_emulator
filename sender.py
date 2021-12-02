@@ -15,10 +15,10 @@ class Sender:
         # gain constant used in retransmit timer
         self.alpha = 0.7
         # Predicted rtt and deviation
-        self.predicted_rtt = 80
-        self.predicted_deviation = 15
+        self.predicted_rtt = 80.0
+        self.predicted_deviation = 15.0
         # Time out threshold
-        self.tot = (4*self.predicted_deviation) + self.predicted_rtt
+        self.tot = (4.0*self.predicted_deviation) + self.predicted_rtt
         self.timer = Timer()
         self.window = []
         self.num_acks_received = 0
@@ -73,10 +73,10 @@ class Sender:
     def update_retransmission_timer_info(self, actual_rtt):
         # avg RTT using techniques from Jacobson's paper
         actual_deviation = abs(self.predicted_rtt - actual_rtt)
-        self.predicted_rtt = self.predicted_rtt*self.alpha + (1 - self.alpha)*actual_rtt
-        self.predicted_deviation = self.alpha*self.predicted_deviation + (1 - self.alpha)*actual_deviation
+        self.predicted_rtt = self.predicted_rtt*self.alpha + (1.0 - self.alpha)*actual_rtt
+        self.predicted_deviation = self.alpha*self.predicted_deviation + (1.0 - self.alpha)*actual_deviation
         # Update timeout timer
-        self.tot = (8 * self.predicted_deviation) + self.predicted_rtt
+        self.tot = (8.0 * self.predicted_deviation) + self.predicted_rtt
 
     def exponential_back_off_timer(self):
         self.tot = self.tot*3
@@ -107,8 +107,9 @@ while True:
     sender.start_timer()
     # Start checking for acknowledgements.
     while True:
-        if sender.check_timer() > sender.tot:
-            print("Timeout")
+        t = sender.check_timer()
+        if t > float(sender.tot):
+            print("Timeout, tot =", format(sender.tot, ".2f"), "time =", t)
             # Exponentially increase back off timer.
             sender.exponential_back_off_timer()
             # Stop timer, and then break out of loop.
@@ -133,4 +134,3 @@ while True:
 
         # Increment number of acks received.
         sender.increment_acks_received()
-
