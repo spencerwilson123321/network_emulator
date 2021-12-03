@@ -9,9 +9,10 @@ from timer import Timer
 
 class Receiver:
 
-    def __init__(self, receiverIP, receiverPort, senderIP, senderPort):
+    def __init__(self, receiverIP, receiverPort, senderIP, senderPort, nIP, nPort):
         self.sender_address = (senderIP, senderPort)
         self.receiver_address = (receiverIP, receiverPort)
+        self.network_address = (nIP, nPort)
         self.receiver_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.receiver_socket.bind(self.receiver_address)
         self.expected_seq_num = 0
@@ -20,7 +21,7 @@ class Receiver:
 
     # this will generate an ack packet for the given data packet.
     def generate_ack_packet(self, data_pkt):
-        return Packet(PacketType.ACK, data_pkt.seq_num)
+        return Packet(PacketType.ACK, data_pkt.seq_num, dst_addr=self.sender_address)
 
     # returns a tuple (data, addr)
     def receive_packet(self):
@@ -33,7 +34,7 @@ class Receiver:
 
     # Sends a packet to the receiver
     def sendpkt(self, pkt):
-        self.receiver_socket.sendto(pickle.dumps(pkt), self.sender_address)
+        self.receiver_socket.sendto(pickle.dumps(pkt), self.network_address)
 
 
 if __name__ == '__main__':
@@ -51,8 +52,11 @@ if __name__ == '__main__':
         rPort = int(options[1])
         sIP = options[2]
         sPort = int(options[3])
+        nIP = options[4]
+        # The receive port of the network.
+        nPort = int(options[5])
 
-    receiver = Receiver(rIP, rPort, sIP, sPort)
+    receiver = Receiver(rIP, rPort, sIP, sPort, nIP, nPort)
     receiver.timer.start()
     while True:
         # receive packet

@@ -10,9 +10,10 @@ import sys
 
 class Sender:
 
-    def __init__(self, receiverIP, receiverPort, senderIP, senderPort):
+    def __init__(self, receiverIP, receiverPort, senderIP, senderPort, networkIP, networkPort):
         self.receiver_address = (receiverIP, receiverPort)
         self.sender_address = (senderIP, senderPort)
+        self.networK_address = (networkIP, networkPort)
         self.window_size = 4
         # gain constant used in retransmit timer
         self.alpha = 0.7
@@ -51,13 +52,13 @@ class Sender:
         for x in range(1, self.window_size+1):
             if x == self.window_size:
                 self.last_highest_sequence_number = self.last_biggest_ack+x
-            self.window.append(Packet(PacketType.DATA, self.last_biggest_ack+x))
+            self.window.append(Packet(PacketType.DATA, self.last_biggest_ack+x, self.receiver_address))
 
     def send_all_in_window(self):
         # need to create a socket with connection, and then send.
         for x in self.window:
             # for each x serialize each object and send to receiver using senderSocket.
-            self.sender_socket.sendto(pickle.dumps(x), self.receiver_address)
+            self.sender_socket.sendto(pickle.dumps(x), self.networK_address)
             # Also make a print statement to the console so we can see what is being sent.
             print("Sending", x, "to", self.receiver_address)
         # clear window afterwards
@@ -97,8 +98,10 @@ def main():
         rPort = int(options[1])
         sIP = options[2]
         sPort = int(options[3])
+        nIP = options[4]
+        nPort = int(options[5])
 
-    sender = Sender(rIP, rPort, sIP, sPort)
+    sender = Sender(rIP, rPort, sIP, sPort, nIP, nPort)
 
     while True:
         # Determine packets to send, send, start timer.
