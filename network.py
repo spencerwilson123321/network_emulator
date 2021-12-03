@@ -7,6 +7,7 @@ import socket
 import threading
 import random
 import time
+import os
 
 
 class NetworkSimulator:
@@ -35,6 +36,7 @@ class NetworkSimulator:
         # This lock will be used on the sending socket so that the separate threads
         # don't try to send stuff on the socket at the same time.
         self.lock = threading.Lock()
+        self.num_lost_packets = 0
 
     # Will return true if we should discard the pkt, and false if we should not.
     def discard_pkt(self):
@@ -46,7 +48,7 @@ class NetworkSimulator:
 
     # Receive a packet from the receive socket.
     def receive_packet(self):
-        data, addr = self.sendSocket.recvfrom(1024)
+        data, addr = self.receiveSocket.recvfrom(1024)
         return pickle.loads(data), addr
 
     # This method will send a packet to a destination
@@ -55,6 +57,9 @@ class NetworkSimulator:
         self.lock.acquire()
         self.sendSocket.sendto(pickle.dumps(packet), addr)
         self.lock.release()
+
+    def increment_lost_packets(self):
+        self.num_lost_packets = self.num_lost_packets + 1
 
 
 def main():
@@ -89,6 +94,7 @@ def main():
             continue
         # Check BER and discard packet
         if simulator.discard_pkt():
+            simulator.increment_lost_packets()
             continue
         else:
             # Start thread for each packet with avg_delay
