@@ -25,6 +25,7 @@ class Sender:
         self.timer = Timer()
         self.window = []
         self.num_acks_received = 0
+        self.num_timeouts = 0
         self.sender_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sender_socket.bind(self.sender_address)
         self.sender_socket.setblocking(0)
@@ -37,6 +38,7 @@ class Sender:
         # This is a list keeping tracks of the RTTs for each ack received
         # so that the timer threshold can be updated dynamically on each round.
         self.rtt_times = []
+        self.ending_sequence_number = 2000
 
     def start_timer(self):
         self.timer.start()
@@ -68,6 +70,9 @@ class Sender:
     def increment_acks_received(self):
         self.num_acks_received = self.num_acks_received+1
 
+    def increment_num_timeouts(self):
+        self.num_timeouts = self.num_timeouts + 1
+
     def receive_packet(self):
         data, addr = self.sender_socket.recvfrom(1024)
         return pickle.loads(data), addr
@@ -83,12 +88,12 @@ class Sender:
     def exponential_back_off_timer(self):
         self.tot = self.tot*3
 
+    def send_eot(self):
+        eot_pkt = Packet(PacketType.EOT, 0, self.receiver_address)
+        self.sender_socket.sendto(pickle.dumps(eot_pkt), self.networK_address)
+
 
 def main():
-
-    # Receiver IP and Port for socket connection.
-    rIP = None
-    rPort = None
 
     # Read config information from config file, sender info is on line 1.
     with open("config") as file:
@@ -116,6 +121,7 @@ def main():
                 print("Timeout, tot =", format(sender.tot, ".2f"), "time =", t)
                 # Exponentially increase back off timer.
                 sender.exponential_back_off_timer()
+                sender.increment_num_timeouts()
                 # Stop timer, and then break out of loop.
                 sender.stop_timer()
                 break
@@ -130,12 +136,17 @@ def main():
                 continue
             print("Received ack:", ack, "from", addr)
             # Check and set last biggest ack
+            if ack.seq_num == sender.ending_sequence_number:
+                sender.send_eot()
+                break
             if ack.seq_num > sender.last_biggest_ack:
                 sender.last_biggest_ack = ack.seq_num
             # Update rolling average for RTT.
             sender.update_retransmission_timer_info(sender.timer.check_time())
             # Increment number of acks received.
             sender.increment_acks_received()
+    print(f"Total Acks received: {sender.num_acks_received}")
+    print(f"Total number of timeouts: {sender.num_timeouts}")
 
 
 if __name__ == '__main__':

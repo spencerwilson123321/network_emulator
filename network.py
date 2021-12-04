@@ -8,6 +8,7 @@ import threading
 import random
 import time
 import os
+from packet import PacketType
 
 
 class NetworkSimulator:
@@ -92,6 +93,12 @@ def main():
                 continue
         except BlockingIOError:
             continue
+        if pkt.pkt_type == PacketType.EOT:
+            print("EOT detected, shutting down...")
+            final_thread = threading.Thread(target=simulator.send_packet_to, args=(pkt.dst_addr, pkt,))
+            final_thread.start()
+            final_thread.join()
+            break
         # Check BER and discard packet
         if simulator.discard_pkt():
             simulator.increment_lost_packets()
@@ -99,6 +106,7 @@ def main():
         else:
             # Start thread for each packet with avg_delay
             threading.Thread(target=simulator.send_packet_to, args=(pkt.dst_addr, pkt,)).start()
+    print(f"Total lost packets: {simulator.num_lost_packets}")
 
 
 if __name__ == '__main__':

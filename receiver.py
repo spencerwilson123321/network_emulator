@@ -1,5 +1,8 @@
 import socket
 import pickle
+import sys
+import traceback
+
 from packet import Packet
 from packet import PacketType
 import random
@@ -18,6 +21,7 @@ class Receiver:
         self.expected_seq_num = 0
         self.last_acked_packet = None
         self.timer = Timer()
+        self.num_duplicate_acks = 0
 
     # this will generate an ack packet for the given data packet.
     def generate_ack_packet(self, data_pkt):
@@ -36,13 +40,11 @@ class Receiver:
     def sendpkt(self, pkt):
         self.receiver_socket.sendto(pickle.dumps(pkt), self.network_address)
 
+    def increment_num_duplicate_acks(self):
+        self.num_duplicate_acks = self.num_duplicate_acks + 1
 
-if __name__ == '__main__':
 
-    rIP = None
-    rPort = None
-    sIP = None
-    sPort = None
+def main():
 
     # Read config information from config file, sender info is on line 1.
     with open("config") as file:
@@ -61,8 +63,9 @@ if __name__ == '__main__':
     while True:
         # receive packet
         data_pkt, addr = receiver.receive_packet()
-
         print(receiver.timer.check_time(), "Received packet:", data_pkt, " from", addr)
+        if data_pkt.pkt_type == PacketType.EOT:
+            break
         if data_pkt.seq_num == receiver.expected_seq_num:
             # create ack for packet
             ack = receiver.generate_ack_packet(data_pkt)
@@ -75,18 +78,17 @@ if __name__ == '__main__':
         # of last successfully ack'd packet.
         else:
             print("sending duplicate ACK:", receiver.last_acked_packet)
+            receiver.increment_num_duplicate_acks()
             receiver.sendpkt(receiver.last_acked_packet)
+    print("EOT Received, ending transfer...")
+    print(f"Total Duplicate Acks sent: {receiver.num_duplicate_acks}")
 
+if __name__ == '__main__':
 
-
-
-
-
-
-
-
-
-
-
-
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("Shutting down receiver...")
+    except Exception:
+        traceback.print_exc(file=sys.stdout)
 
