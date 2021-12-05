@@ -16,12 +16,12 @@ class Sender:
         self.networK_address = (networkIP, networkPort)
         self.window_size = 4
         # gain constant used in retransmit timer
-        self.alpha = 0.7
+        self.alpha = 0.8
         # Predicted rtt and deviation
         self.predicted_rtt = 80.0
-        self.predicted_deviation = 15.0
+        self.predicted_deviation = 50.0
         # Time out threshold
-        self.tot = (4.0*self.predicted_deviation) + self.predicted_rtt
+        self.tot = self.predicted_deviation + self.predicted_rtt
         self.timer = Timer()
         self.window = []
         self.num_acks_received = 0
@@ -39,6 +39,7 @@ class Sender:
         # so that the timer threshold can be updated dynamically on each round.
         self.rtt_times = []
         self.ending_sequence_number = 2000
+        self.state = 0
 
     def start_timer(self):
         self.timer.start()
@@ -65,7 +66,7 @@ class Sender:
             print("Sending", x, "to", self.receiver_address)
         # clear window afterwards
         self.window = []
-        self.num_acks_received = 0
+        # self.num_acks_received = 0
 
     def increment_acks_received(self):
         self.num_acks_received = self.num_acks_received+1
@@ -83,7 +84,7 @@ class Sender:
         self.predicted_rtt = self.predicted_rtt*self.alpha + (1.0 - self.alpha)*actual_rtt
         self.predicted_deviation = self.alpha*self.predicted_deviation + (1.0 - self.alpha)*actual_deviation
         # Update timeout timer
-        self.tot = (8.0 * self.predicted_deviation) + self.predicted_rtt
+        self.tot = (5.0*self.predicted_deviation) + (1.5*self.predicted_rtt)
 
     def exponential_back_off_timer(self):
         self.tot = self.tot*3
@@ -91,6 +92,12 @@ class Sender:
     def send_eot(self):
         eot_pkt = Packet(PacketType.EOT, 0, self.receiver_address)
         self.sender_socket.sendto(pickle.dumps(eot_pkt), self.networK_address)
+
+    def set_state(self, state):
+        self.state = state
+
+    def get_state(self):
+        return self.state
 
 
 def main():
@@ -109,6 +116,9 @@ def main():
     sender = Sender(rIP, rPort, sIP, sPort, nIP, nPort)
 
     while True:
+        # If eot has been sent, then finish
+        if sender.get_state() == 1:
+            break
         # Determine packets to send, send, start timer.
         sender.generate_window()
         # sender.adjust_timer_thresh()
@@ -135,16 +145,18 @@ def main():
             except BlockingIOError:
                 continue
             print("Received ack:", ack, "from", addr)
+            # Increment number of acks received.
+            sender.increment_acks_received()
             # Check and set last biggest ack
             if ack.seq_num == sender.ending_sequence_number:
                 sender.send_eot()
+                sender.set_state(1)
                 break
             if ack.seq_num > sender.last_biggest_ack:
                 sender.last_biggest_ack = ack.seq_num
             # Update rolling average for RTT.
             sender.update_retransmission_timer_info(sender.timer.check_time())
-            # Increment number of acks received.
-            sender.increment_acks_received()
+            print(sender.tot)
     print(f"Total Acks received: {sender.num_acks_received}")
     print(f"Total number of timeouts: {sender.num_timeouts}")
 
