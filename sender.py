@@ -6,11 +6,17 @@ import socket
 import pickle
 from timer import Timer
 import sys
+import logging
+
+logging.basicConfig(filename='sender.log',
+                    encoding='utf-8',
+                    level=logging.INFO,
+                    format="%(asctime)s - %(message)s")
 
 
 class Sender:
 
-    def __init__(self, receiverIP, receiverPort, senderIP, senderPort, networkIP, networkPort):
+    def __init__(self, receiverIP, receiverPort, senderIP, senderPort, networkIP, networkPort, numPacketsToSend):
         self.receiver_address = (receiverIP, receiverPort)
         self.sender_address = (senderIP, senderPort)
         self.networK_address = (networkIP, networkPort)
@@ -35,11 +41,9 @@ class Sender:
         # then this value = 3. Then we can say if we receive ack = 3 then send
         # more packets. This way we don't end up waiting for all acks
         self.last_highest_sequence_number = -2
-        # This is a list keeping tracks of the RTTs for each ack received
-        # so that the timer threshold can be updated dynamically on each round.
-        self.rtt_times = []
-        self.ending_sequence_number = 2000
+        self.ending_sequence_number = numPacketsToSend
         self.state = 0
+        self.total_pkts_sent = 0
 
     def start_timer(self):
         self.timer.start()
@@ -52,6 +56,7 @@ class Sender:
 
     # Need a function to generate data packets, will return windowsize number of packets.
     def generate_window(self):
+        self.total_pkts_sent = self.total_pkts_sent + self.window_size
         for x in range(1, self.window_size+1):
             if x == self.window_size:
                 self.last_highest_sequence_number = self.last_biggest_ack+x
@@ -64,6 +69,7 @@ class Sender:
             self.sender_socket.sendto(pickle.dumps(x), self.networK_address)
             # Also make a print statement to the console so we can see what is being sent.
             print("Sending", x, "to", self.receiver_address)
+            logging.info("Sending", x, "to", self.receiver_address)
         # clear window afterwards
         self.window = []
         # self.num_acks_received = 0
@@ -84,7 +90,7 @@ class Sender:
         self.predicted_rtt = self.predicted_rtt*self.alpha + (1.0 - self.alpha)*actual_rtt
         self.predicted_deviation = self.alpha*self.predicted_deviation + (1.0 - self.alpha)*actual_deviation
         # Update timeout timer
-        self.tot = (5.0*self.predicted_deviation) + (1.5*self.predicted_rtt)
+        self.tot = (10.0*self.predicted_deviation) + (1.5*self.predicted_rtt)
 
     def exponential_back_off_timer(self):
         self.tot = self.tot*3
@@ -112,8 +118,9 @@ def main():
         sPort = int(options[3])
         nIP = options[4]
         nPort = int(options[5])
+        numPacketsToSend = int(options[7])
 
-    sender = Sender(rIP, rPort, sIP, sPort, nIP, nPort)
+    sender = Sender(rIP, rPort, sIP, sPort, nIP, nPort, numPacketsToSend)
 
     while True:
         # If eot has been sent, then finish
@@ -125,10 +132,12 @@ def main():
         sender.send_all_in_window()
         sender.start_timer()
         # Start checking for acknowledgements.
+        tot = sender.tot
         while True:
             t = sender.check_timer()
-            if t > float(sender.tot):
-                print("Timeout, tot =", format(sender.tot, ".2f"), "time =", t)
+            if t > float(tot):
+                print(f"Timeout, tot = {format(tot, '.2f')}, time = {t}")
+                logging.info(f"Timeout, tot = {format(tot, '.2f')}, time = {t}")
                 # Exponentially increase back off timer.
                 sender.exponential_back_off_timer()
                 sender.increment_num_timeouts()
@@ -137,6 +146,7 @@ def main():
                 break
             if sender.last_biggest_ack == sender.last_highest_sequence_number:
                 print("All Data has been Ack'd!")
+                logging.info("All Data has been Ack'd!")
                 break
             try:
                 ack, addr = sender.receive_packet()
@@ -144,7 +154,8 @@ def main():
                     continue
             except BlockingIOError:
                 continue
-            print("Received ack:", ack, "from", addr)
+            print(f"Received ack: {ack} from {addr}")
+            logging.info(f"Received: {ack} from {addr}")
             # Increment number of acks received.
             sender.increment_acks_received()
             # Check and set last biggest ack
@@ -156,9 +167,13 @@ def main():
                 sender.last_biggest_ack = ack.seq_num
             # Update rolling average for RTT.
             sender.update_retransmission_timer_info(sender.timer.check_time())
-            print(sender.tot)
     print(f"Total Acks received: {sender.num_acks_received}")
+    print(f"Total Pkts sent: {sender.total_pkts_sent}")
     print(f"Total number of timeouts: {sender.num_timeouts}")
+    logging.info(f"Total Acks received: {sender.num_acks_received}")
+    logging.info(f"Total Pkts sent: {sender.total_pkts_sent}")
+    logging.info(f"Total number of timeouts: {sender.num_timeouts}")
+    sender.sender_socket.close()
 
 
 if __name__ == '__main__':
@@ -166,7 +181,7 @@ if __name__ == '__main__':
     try:
         main()
     except KeyboardInterrupt:
-        print("Shutting down...")
+        print("\nShutting down sender...")
     except Exception:
         traceback.print_exc(file=sys.stdout)
     sys.exit(-1)

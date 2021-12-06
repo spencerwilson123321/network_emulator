@@ -27,7 +27,7 @@ class Receiver:
     def generate_ack_packet(self, data_pkt):
         return Packet(PacketType.ACK, data_pkt.seq_num, dst_addr=self.sender_address)
 
-    # returns a tuple (data, addr)
+    # returns data and addr
     def receive_packet(self):
         data, addr = self.receiver_socket.recvfrom(1024)
         return pickle.loads(data), addr
@@ -82,13 +82,15 @@ def main():
             receiver.sendpkt(receiver.last_acked_packet)
     print("EOT Received, ending transfer...")
     print(f"Total Duplicate Acks sent: {receiver.num_duplicate_acks}")
+    receiver.receiver_socket.close()
+
 
 if __name__ == '__main__':
 
     try:
         main()
     except KeyboardInterrupt:
-        print("Shutting down receiver...")
+        print("\nShutting down receiver...")
     except Exception:
         traceback.print_exc(file=sys.stdout)
 
