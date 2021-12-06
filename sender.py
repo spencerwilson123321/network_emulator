@@ -68,8 +68,8 @@ class Sender:
             # for each x serialize each object and send to receiver using senderSocket.
             self.sender_socket.sendto(pickle.dumps(x), self.networK_address)
             # Also make a print statement to the console so we can see what is being sent.
-            print("Sending", x, "to", self.receiver_address)
-            logging.info("Sending", x, "to", self.receiver_address)
+            print(f"Sending: {x}")
+            logging.info(f"Sending: {x}")
         # clear window afterwards
         self.window = []
         # self.num_acks_received = 0
@@ -136,8 +136,8 @@ def main():
         while True:
             t = sender.check_timer()
             if t > float(tot):
-                print(f"Timeout, tot = {format(tot, '.2f')}, time = {t}")
-                logging.info(f"Timeout, tot = {format(tot, '.2f')}, time = {t}")
+                print(f"Timeout: tot = {format(tot, '.2f')}, time = {t}")
+                logging.info(f"Timeout: tot = {format(tot, '.2f')}, time = {t}")
                 # Exponentially increase back off timer.
                 sender.exponential_back_off_timer()
                 sender.increment_num_timeouts()
@@ -145,8 +145,8 @@ def main():
                 sender.stop_timer()
                 break
             if sender.last_biggest_ack == sender.last_highest_sequence_number:
-                print("All Data has been Ack'd!")
-                logging.info("All Data has been Ack'd!")
+                print("Successful Transaction: All Data has been Acknowledged")
+                logging.info("Successful Transaction: All Data has been Acknowledged")
                 break
             try:
                 ack, addr = sender.receive_packet()
@@ -154,8 +154,8 @@ def main():
                     continue
             except BlockingIOError:
                 continue
-            print(f"Received ack: {ack} from {addr}")
-            logging.info(f"Received: {ack} from {addr}")
+            print(f"Received: {ack}")
+            logging.info(f"Received: {ack}")
             # Increment number of acks received.
             sender.increment_acks_received()
             # Check and set last biggest ack

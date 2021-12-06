@@ -2,12 +2,15 @@ import socket
 import pickle
 import sys
 import traceback
-
 from packet import Packet
 from packet import PacketType
-import random
-import time
 from timer import Timer
+import logging
+
+logging.basicConfig(filename='receiver.log',
+                    encoding='utf-8',
+                    level=logging.INFO,
+                    format="%(asctime)s - %(message)s")
 
 
 class Receiver:
@@ -63,7 +66,8 @@ def main():
     while True:
         # receive packet
         data_pkt, addr = receiver.receive_packet()
-        print(receiver.timer.check_time(), "Received packet:", data_pkt, " from", addr)
+        print(f"Received: {data_pkt}")
+        logging.info(f"Received: {data_pkt}")
         if data_pkt.pkt_type == PacketType.EOT:
             break
         if data_pkt.seq_num == receiver.expected_seq_num:
@@ -73,15 +77,19 @@ def main():
             receiver.increment_expected_seq_num()
             # Send ack packet
             receiver.sendpkt(ack)
-            print(receiver.timer.check_time(), "Sending ACK:", ack, "to", receiver.sender_address)
+            print(f"Sending: {ack}")
+            logging.info(f"Sending: {ack}")
         # If the data_pkt isn't the expected packet, then send ack
         # of last successfully ack'd packet.
         else:
-            print("sending duplicate ACK:", receiver.last_acked_packet)
+            print(f"Sending Duplicate ACK: {receiver.last_acked_packet}")
+            logging.info(f"Sending Duplicate ACK: {receiver.last_acked_packet}")
             receiver.increment_num_duplicate_acks()
             receiver.sendpkt(receiver.last_acked_packet)
     print("EOT Received, ending transfer...")
-    print(f"Total Duplicate Acks sent: {receiver.num_duplicate_acks}")
+    print(f"Total Duplicate ACKs sent: {receiver.num_duplicate_acks}")
+    logging.info("EOT Received, ending transfer...")
+    logging.info(f"Total Duplicate ACKs sent: {receiver.num_duplicate_acks}")
     receiver.receiver_socket.close()
 
 
