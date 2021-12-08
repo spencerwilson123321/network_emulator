@@ -128,7 +128,7 @@ class Sender:
 
     """ When there is a timeout, increase the retransmission timer exponentially. """
     def exponential_back_off_timer(self):
-        self.tot = self.tot*3
+        self.tot = self.tot*2
 
     """ Send the EOT packet once all the data has been successfully transmitted to the receiver. """
     def send_eot(self):
@@ -197,7 +197,7 @@ def main():
             # Increment number of acks received.
             sender.increment_acks_received()
             # Check and set last biggest ack
-            if ack.seq_num == sender.ending_sequence_number:
+            if ack.seq_num >= sender.ending_sequence_number:
                 sender.send_eot()
                 sender.set_state(1)
                 break
