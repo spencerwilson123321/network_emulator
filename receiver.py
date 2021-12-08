@@ -34,6 +34,8 @@ class Receiver:
         self.last_acked_packet = None
         """ This is a counter that counts the number of duplicate acks. """
         self.num_duplicate_acks = 0
+        """ This is a counter that counts the number of successful acks. """
+        self.num_acks = 0
 
     """ this will generate an ack packet for the given data packet. """
     def generate_ack_packet(self, data_pkt):
@@ -55,6 +57,10 @@ class Receiver:
     """ This increments the duplicate ack counter. """
     def increment_num_duplicate_acks(self):
         self.num_duplicate_acks = self.num_duplicate_acks + 1
+
+    """ This increments the ack counter. """
+    def increment_acks():
+        self.num_acks = self.num_acks + 1
 
 
 def main():
@@ -94,6 +100,7 @@ def main():
             receiver.increment_expected_seq_num()
             # Send ack packet
             receiver.sendpkt(ack)
+            receiver.increment_acks()
             print(f"Sending: {ack}")
             logging.info(f"Sending: {ack}")
         # If the data_pkt isn't the expected packet, then send ack
@@ -105,8 +112,10 @@ def main():
             receiver.sendpkt(receiver.last_acked_packet)
     print("EOT Received, ending transfer...")
     print(f"Total Duplicate ACKs sent: {receiver.num_duplicate_acks}")
+    print(f"Total Successful ACKs sent: {receiver.num_acks}")
     logging.info("EOT Received, ending transfer...")
     logging.info(f"Total Duplicate ACKs sent: {receiver.num_duplicate_acks}")
+    logging.info(f"Total Successful ACKs sent: {receiver.num_acks}")
     receiver.receiver_socket.close()
 
 
