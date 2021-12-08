@@ -1,3 +1,10 @@
+# Specific Project Files
+network.log
+sender.log
+receiver.log
+config
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
