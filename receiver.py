@@ -59,7 +59,7 @@ class Receiver:
         self.num_duplicate_acks = self.num_duplicate_acks + 1
 
     """ This increments the ack counter. """
-    def increment_acks():
+    def increment_acks(self):
         self.num_acks = self.num_acks + 1
 
 
