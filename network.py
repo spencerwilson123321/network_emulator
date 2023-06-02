@@ -16,76 +16,45 @@ logging.basicConfig(filename='network.log',
                     level=logging.INFO,
                     format="%(asctime)s - %(message)s")
 
-"""
-The NetworkSimulator class defines all the properties and behaviours of the simulated network.
-It drops packets to achieve a specified bit error rate. It also waits for the given average delay before
-sending packets to their destination in order to simulate propagation time and queueing/processing delay.
-"""
-class NetworkSimulator:
 
+class NetworkSimulator:
     """
-    Constructer for the NetworkSimulator class. It takes information from the config file
-    as parameters.
+        The NetworkSimulator class defines all the properties and behaviours of the simulated network.
+        It drops packets to achieve a specified bit error rate. It also waits for the given average delay before
+        sending packets to their destination in order to simulate propagation time and queueing/processing delay.
     """
+
     def __init__(self, rIP, rPort, sIP, sPort, nIP, nPort_receive, nPort_send, ber, avg_delay):
-        """ Receiver IP """
         self.receiverIP = rIP
-        """ Receiver Port """
         self.receiverPort = rPort
-        """ Sender IP """
         self.senderIP = sIP
-        """ Sender Port """
         self.senderPort = sPort
-        """ Network IP """
         self.networkIP = nIP
-        """ The bit error rate, rate that packets are dropped. """
+        # The bit error rate, rate that packets are dropped.
         self.ber = ber
-        """ Average delay each packet must wait before being sent to its destination. """
+        # Average delay each packet must wait before being sent to its destination.
         self.avg_delay = avg_delay
-        """ Port for the receive socket. """
         self.networkReceivePort = nPort_receive
-        """ Port for the send socket. """
         self.networkSendPort = nPort_send
-        """ 
-        Receive Socket, all packets that are sent to the network
-        are received through this socket.
-        """
         self.receiveSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        """
-        Send Socket, all packets that are sent to their destination are sent
-        through this socket. A lock is used to make sure that each thread doesn't try
-        to access the socket at the same time.
-        """
         self.sendSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        """ 
-        The code below binds the sockets to their respective addresses
-        and ports. It also sets the sockets to be non-blocking sockets.
-        """
         self.receiveSocket.bind((nIP, nPort_receive))
         self.sendSocket.bind((nIP, nPort_send))
         self.receiveSocket.setblocking(0)
         self.sendSocket.setblocking(0)
-        """ 
-        Lock object which is used on the senderSocket to make sure that two
-        threads don't try to use it at the same time.
-        """
         self.lock = threading.Lock()
-        """ A counter used to keep track of the number of lost packets. """
         self.num_lost_packets = 0
 
-    """ Will return true if we should discard the pkt, and false if we should not. """
     def discard_pkt(self):
         if self.ber == 1:
             return True
         else:
             return random.random() < self.ber
 
-    """ Receive a packet from the receive socket."""
     def receive_packet(self):
         data, addr = self.receiveSocket.recvfrom(1024)
         return pickle.loads(data), addr
 
-    """ This method will send a packet to a given destination """
     def send_packet_to(self, addr, packet):
         time.sleep(self.avg_delay*(1/1000))
         self.lock.acquire()
@@ -94,7 +63,6 @@ class NetworkSimulator:
         print(f"Sending: {packet}")
         logging.info(f"Sending: {packet}")
 
-    """ Increments the lost packets counter. """
     def increment_lost_packets(self):
         self.num_lost_packets = self.num_lost_packets + 1
 
@@ -118,11 +86,10 @@ def main():
 
     simulator = NetworkSimulator(rIP, rPort, sIP, sPort, nIP, nRPort, nSPort, BER, avg_delay)
 
-    """
-    The main loop checks for incoming packets, for each packet that is received, it checks ber and
-    potentially drops the packet. If the packet is not dropped then the packet is sent to a new thread which
-    waits for the average delay and then sends the packet to it's destination.
-    """
+    # The main loop checks for incoming packets, for each packet that is received, it checks ber and
+    # potentially drops the packet. If the packet is not dropped then the packet is sent to a new thread which
+    # waits for the average delay and then sends the packet to it's destination.
+    
     while True:
         try:
             pkt, addr = simulator.receive_packet()
@@ -162,6 +129,3 @@ if __name__ == '__main__':
     except Exception:
         traceback.print_exc(file=sys.stdout)
     sys.exit(-1)
-
-
-
