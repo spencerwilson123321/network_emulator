@@ -25,7 +25,7 @@ class Receiver:
         self.receiver_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.receiver_socket.bind(self.receiver_address)
         self.expected_seq_num = 0
-        self.last_acked_packet = None
+        self.previous_ack = None
         self.num_duplicate_acks = 0
         self.num_acks = 0
 
@@ -59,7 +59,7 @@ class Receiver:
                 break
             if data_pkt.seq_num == self.expected_seq_num:
                 ack = self.generate_ack_packet(data_pkt)
-                self.last_acked_packet = ack
+                self.previous_ack = ack
                 self.increment_expected_seq_num()
                 self.sendpkt(ack)
                 self.increment_acks()
@@ -67,9 +67,9 @@ class Receiver:
             # If the data_pkt isn't the expected packet, then send ack
             # of last successfully ack'd packet.
             else:
-                logging.info(f"Sending Duplicate ACK: {self.last_acked_packet}")
+                logging.info(f"Sending Duplicate ACK: {self.previous_ack}")
                 self.increment_num_duplicate_acks()
-                self.sendpkt(self.last_acked_packet)
+                self.sendpkt(self.previous_ack)
         logging.info("EOT Received, ending transfer...")
         logging.info(f"Total Duplicate ACKs sent: {self.num_duplicate_acks}")
         logging.info(f"Total Successful ACKs sent: {self.num_acks}")
