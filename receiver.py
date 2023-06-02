@@ -50,7 +50,31 @@ class Receiver:
         self.num_acks = self.num_acks + 1
     
     def run_until_done(self):
-        pass
+        # The main loop checks for packets and upon receiving a packet, it generates an ack, and sends
+        # the ack to the destination. If the packet is the EOT packet then that means the sender has transferred
+        # all of it's data and the receiver shuts down.
+        while True:
+            data_pkt, addr = receiver.receive_packet()
+            logging.info(f"Received: {data_pkt}")
+            if data_pkt.pkt_type == PacketType.EOT:
+                break
+            if data_pkt.seq_num == receiver.expected_seq_num:
+                ack = receiver.generate_ack_packet(data_pkt)
+                receiver.last_acked_packet = ack
+                receiver.increment_expected_seq_num()
+                receiver.sendpkt(ack)
+                receiver.increment_acks()
+                logging.info(f"Sending: {ack}")
+            # If the data_pkt isn't the expected packet, then send ack
+            # of last successfully ack'd packet.
+            else:
+                logging.info(f"Sending Duplicate ACK: {receiver.last_acked_packet}")
+                receiver.increment_num_duplicate_acks()
+                receiver.sendpkt(receiver.last_acked_packet)
+        logging.info("EOT Received, ending transfer...")
+        logging.info(f"Total Duplicate ACKs sent: {receiver.num_duplicate_acks}")
+        logging.info(f"Total Successful ACKs sent: {receiver.num_acks}")
+        receiver.receiver_socket.close()
 
 
 def main():
@@ -67,33 +91,8 @@ def main():
         nPort = int(options[5])
 
     receiver = Receiver(rIP, rPort, sIP, sPort, nIP, nPort)
-    
-    # The main loop checks for packets and upon receiving a packet, it generates an ack, and sends
-    # the ack to the destination. If the packet is the EOT packet then that means the sender has transferred
-    # all of it's data and the receiver shuts down.
+    receiver.run_until_done()
 
-    while True:
-        data_pkt, addr = receiver.receive_packet()
-        logging.info(f"Received: {data_pkt}")
-        if data_pkt.pkt_type == PacketType.EOT:
-            break
-        if data_pkt.seq_num == receiver.expected_seq_num:
-            ack = receiver.generate_ack_packet(data_pkt)
-            receiver.last_acked_packet = ack
-            receiver.increment_expected_seq_num()
-            receiver.sendpkt(ack)
-            receiver.increment_acks()
-            logging.info(f"Sending: {ack}")
-        # If the data_pkt isn't the expected packet, then send ack
-        # of last successfully ack'd packet.
-        else:
-            logging.info(f"Sending Duplicate ACK: {receiver.last_acked_packet}")
-            receiver.increment_num_duplicate_acks()
-            receiver.sendpkt(receiver.last_acked_packet)
-    logging.info("EOT Received, ending transfer...")
-    logging.info(f"Total Duplicate ACKs sent: {receiver.num_duplicate_acks}")
-    logging.info(f"Total Successful ACKs sent: {receiver.num_acks}")
-    receiver.receiver_socket.close()
 
 if __name__ == '__main__':
 
