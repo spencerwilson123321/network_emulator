@@ -48,6 +48,9 @@ class Receiver:
 
     def increment_acks(self):
         self.num_acks = self.num_acks + 1
+    
+    def run_until_done(self):
+        pass
 
 
 def main():
@@ -71,7 +74,6 @@ def main():
 
     while True:
         data_pkt, addr = receiver.receive_packet()
-        print(f"Received: {data_pkt}")
         logging.info(f"Received: {data_pkt}")
         if data_pkt.pkt_type == PacketType.EOT:
             break
@@ -81,18 +83,13 @@ def main():
             receiver.increment_expected_seq_num()
             receiver.sendpkt(ack)
             receiver.increment_acks()
-            print(f"Sending: {ack}")
             logging.info(f"Sending: {ack}")
         # If the data_pkt isn't the expected packet, then send ack
         # of last successfully ack'd packet.
         else:
-            print(f"Sending Duplicate ACK: {receiver.last_acked_packet}")
             logging.info(f"Sending Duplicate ACK: {receiver.last_acked_packet}")
             receiver.increment_num_duplicate_acks()
             receiver.sendpkt(receiver.last_acked_packet)
-    print("EOT Received, ending transfer...")
-    print(f"Total Duplicate ACKs sent: {receiver.num_duplicate_acks}")
-    print(f"Total Successful ACKs sent: {receiver.num_acks}")
     logging.info("EOT Received, ending transfer...")
     logging.info(f"Total Duplicate ACKs sent: {receiver.num_duplicate_acks}")
     logging.info(f"Total Successful ACKs sent: {receiver.num_acks}")
