@@ -12,7 +12,6 @@ logging.basicConfig(filename='receiver.log',
                     level=logging.INFO,
                     format="%(asctime)s - %(message)s")
 
-
 class Receiver:
     """
         The Receiver class contains all the properties and behaviours needed to implement
@@ -54,31 +53,29 @@ class Receiver:
         # the ack to the destination. If the packet is the EOT packet then that means the sender has transferred
         # all of it's data and the receiver shuts down.
         while True:
-            data_pkt, addr = receiver.receive_packet()
+            data_pkt, addr = self.receive_packet()
             logging.info(f"Received: {data_pkt}")
             if data_pkt.pkt_type == PacketType.EOT:
                 break
-            if data_pkt.seq_num == receiver.expected_seq_num:
-                ack = receiver.generate_ack_packet(data_pkt)
-                receiver.last_acked_packet = ack
-                receiver.increment_expected_seq_num()
-                receiver.sendpkt(ack)
-                receiver.increment_acks()
+            if data_pkt.seq_num == self.expected_seq_num:
+                ack = self.generate_ack_packet(data_pkt)
+                self.last_acked_packet = ack
+                self.increment_expected_seq_num()
+                self.sendpkt(ack)
+                self.increment_acks()
                 logging.info(f"Sending: {ack}")
             # If the data_pkt isn't the expected packet, then send ack
             # of last successfully ack'd packet.
             else:
-                logging.info(f"Sending Duplicate ACK: {receiver.last_acked_packet}")
-                receiver.increment_num_duplicate_acks()
-                receiver.sendpkt(receiver.last_acked_packet)
+                logging.info(f"Sending Duplicate ACK: {self.last_acked_packet}")
+                self.increment_num_duplicate_acks()
+                self.sendpkt(self.last_acked_packet)
         logging.info("EOT Received, ending transfer...")
-        logging.info(f"Total Duplicate ACKs sent: {receiver.num_duplicate_acks}")
-        logging.info(f"Total Successful ACKs sent: {receiver.num_acks}")
-        receiver.receiver_socket.close()
-
+        logging.info(f"Total Duplicate ACKs sent: {self.num_duplicate_acks}")
+        logging.info(f"Total Successful ACKs sent: {self.num_acks}")
+        self.receiver_socket.close()
 
 def main():
-
     with open("config") as file:
         content = file.readlines()
         options = content[0].split()
@@ -87,12 +84,9 @@ def main():
         sIP = options[2]
         sPort = int(options[3])
         nIP = options[4]
-        # The receive port of the network.
         nPort = int(options[5])
-
     receiver = Receiver(rIP, rPort, sIP, sPort, nIP, nPort)
     receiver.run_until_done()
-
 
 if __name__ == '__main__':
 
