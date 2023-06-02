@@ -2,8 +2,7 @@ import socket
 import pickle
 import sys
 import traceback
-from packet import Packet
-from packet import PacketType
+from packet import Packet, PacketType
 from timer import Timer
 import logging
 
@@ -89,7 +88,6 @@ def main():
     receiver.run_until_done()
 
 if __name__ == '__main__':
-
     try:
         main()
     except KeyboardInterrupt:
