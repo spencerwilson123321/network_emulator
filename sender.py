@@ -13,8 +13,6 @@ logging.basicConfig(filename='sender.log',
                     level=logging.INFO,
                     format="%(asctime)s - %(message)s")
 
-CONFIG = configparser.ConfigParser()
-CONFIG.read("config.ini")
 
 class Sender:
     """
@@ -129,6 +127,8 @@ class Sender:
 
 def main():
 
+    CONFIG = configparser.ConfigParser()
+    CONFIG.read("config.ini")
     sender = Sender(CONFIG)
 
     while True:
