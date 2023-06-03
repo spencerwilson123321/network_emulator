@@ -1,5 +1,4 @@
 import traceback
-
 from packet import Packet
 from packet import PacketType
 import socket
@@ -7,6 +6,7 @@ import pickle
 from timer import Timer
 import sys
 import logging
+import configparser
 
 logging.basicConfig(filename='sender.log',
                     encoding='utf-8',
@@ -20,10 +20,11 @@ class Sender:
         send-and-wait protocol. 
     """
 
-    def __init__(self, receiverIP, receiverPort, senderIP, senderPort, networkIP, networkPort, numPacketsToSend):
-        self.receiver_address = (receiverIP, receiverPort)
-        self.sender_address = (senderIP, senderPort)
-        self.networK_address = (networkIP, networkPort)
+    # def __init__(self, receiverIP, receiverPort, senderIP, senderPort, networkIP, networkPort, numPacketsToSend):
+    def __init__(self, configuration):
+        self.receiver_address = (configuration["receiver"]["ip"], int(configuration["receiver"]["port"]))
+        self.sender_address = (configuration["sender"]["ip"], int(configuration["sender"]["port"]))
+        self.networK_address = (configuration["network"]["ip"], int(configuration["network"]["port"]))
         self.window_size = 4
         
         # alpha - gain constant used in retransmit timer.
@@ -126,18 +127,9 @@ class Sender:
 
 def main():
 
-    with open("config") as file:
-        content = file.readlines()
-        options = content[0].split()
-        rIP = options[0]
-        rPort = int(options[1])
-        sIP = options[2]
-        sPort = int(options[3])
-        nIP = options[4]
-        nPort = int(options[5])
-        numPacketsToSend = int(options[7])
-
-    sender = Sender(rIP, rPort, sIP, sPort, nIP, nPort, numPacketsToSend)
+    CONFIG = configparser.ConfigParser()
+    CONFIG.read("config.ini")
+    sender = Sender(CONFIG)
 
     while True:
         # If eot has been sent, then finish
@@ -153,7 +145,6 @@ def main():
         while True:
             t = sender.check_timer()
             if t > float(tot):
-                print(f"Timeout: tot = {format(tot, '.2f')}, time = {t}")
                 logging.info(f"Timeout: tot = {format(tot, '.2f')}, time = {t}")
                 # Exponentially increase back off timer.
                 sender.exponential_back_off_timer()
@@ -162,7 +153,6 @@ def main():
                 sender.stop_timer()
                 break
             if sender.last_biggest_ack == sender.last_highest_sequence_number:
-                print("Successful Transaction: All Data has been Acknowledged")
                 logging.info("Successful Transaction: All Data has been Acknowledged")
                 break
             try:
@@ -171,7 +161,6 @@ def main():
                     continue
             except BlockingIOError:
                 continue
-            print(f"Received: {ack}")
             logging.info(f"Received: {ack}")
             # Increment number of acks received.
             sender.increment_acks_received()
@@ -184,9 +173,6 @@ def main():
                 sender.last_biggest_ack = ack.seq_num
             # Update rolling average for RTT.
             sender.update_retransmission_timer_info(sender.timer.check_time())
-    print(f"Total Acks received: {sender.num_acks_received}")
-    print(f"Total Pkts sent: {sender.total_pkts_sent}")
-    print(f"Total number of timeouts: {sender.num_timeouts}")
     logging.info(f"Total Acks received: {sender.num_acks_received}")
     logging.info(f"Total Pkts sent: {sender.total_pkts_sent}")
     logging.info(f"Total number of timeouts: {sender.num_timeouts}")
