@@ -2,7 +2,7 @@ from struct import pack, unpack
 
 # Packet:
 # type: offset 0 (First Byte) ACK, DATA, EOT
-# number: offset 1 (Second byte) 0-255 circular
+# number: offset 1 (Second byte) 0-255
 # length:  offset 2 (Third byte) 0-255 bytes of data per data packet. 
 # data: length bytes starting at offset 3.
 
