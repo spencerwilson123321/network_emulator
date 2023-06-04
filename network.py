@@ -1,15 +1,12 @@
 import sys
 import traceback
-
-from packet import Packet
+from packet import Packet, PacketType
 import pickle
 import socket
 import threading
 import random
 import time
 import logging
-from packet import PacketType
-
 
 logging.basicConfig(filename='network.log',
                     encoding='utf-8',
