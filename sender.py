@@ -20,7 +20,6 @@ class Sender:
         send-and-wait protocol. 
     """
 
-    # def __init__(self, receiverIP, receiverPort, senderIP, senderPort, networkIP, networkPort, numPacketsToSend):
     def __init__(self, configuration):
         self.receiver_address = (configuration["receiver"]["ip"], int(configuration["receiver"]["port"]))
         self.sender_address = (configuration["sender"]["ip"], int(configuration["sender"]["port"]))
