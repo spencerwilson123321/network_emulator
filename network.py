@@ -36,10 +36,7 @@ class NetworkSimulator:
         self.num_lost_packets = 0
 
     def discard_pkt(self):
-        if self.ber == 1:
-            return True
-        else:
-            return random.random() < self.ber
+        return random.random() < self.ber
 
     def receive_packet(self):
         data, addr = self.receiveSocket.recvfrom(1024)
