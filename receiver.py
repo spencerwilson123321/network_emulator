@@ -1,9 +1,9 @@
 import configparser
-import socket
 import pickle
 import sys
 import traceback
 import logging
+from socket import socket, AF_INET, SOCK_DGRAM
 
 from timer import Timer
 from packet import Packet, PacketType
@@ -22,8 +22,8 @@ class Receiver:
     def __init__(self, configuration):
         self.receiver_address = (configuration["receiver"]["ip"], int(configuration["receiver"]["port"]))
         self.network_address = (configuration["network"]["ip"], int(configuration["network"]["port"]))
-        self.receiver_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.receiver_socket.bind(self.receiver_address)
+        self.socket = socket(AF_INET, SOCK_DGRAM)
+        self.socket.bind(self.receiver_address)
         self.expected_seq_num = 0
         self.previous_ack = None
         self.num_duplicate_acks = 0
@@ -33,14 +33,14 @@ class Receiver:
         return Packet(PacketType.ACK, data_pkt.seq_num, dst_addr=self.sender_address)
 
     def receive_packet(self):
-        data, addr = self.receiver_socket.recvfrom(1024)
+        data, addr = self.socket.recvfrom(1024)
         return pickle.loads(data), addr
 
     def increment_expected_seq_num(self):
         self.expected_seq_num = self.expected_seq_num + 1
 
     def sendpkt(self, pkt):
-        self.receiver_socket.sendto(pickle.dumps(pkt), self.network_address)
+        self.socket.sendto(pickle.dumps(pkt), self.network_address)
 
     def increment_num_duplicate_acks(self):
         self.num_duplicate_acks = self.num_duplicate_acks + 1
@@ -73,7 +73,7 @@ class Receiver:
         logging.info("EOT Received, ending transfer...")
         logging.info(f"Total Duplicate ACKs sent: {self.num_duplicate_acks}")
         logging.info(f"Total Successful ACKs sent: {self.num_acks}")
-        self.receiver_socket.close()
+        self.socket.close()
 
 def main():
     CONFIG = configparser.ConfigParser()
