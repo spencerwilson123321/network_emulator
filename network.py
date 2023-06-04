@@ -1,18 +1,18 @@
 import sys
 import traceback
-from packet import Packet, PacketType
 import pickle
 import socket
 import threading
 import random
 import time
 import logging
+import configparser
+from packet import Packet, PacketType
 
 logging.basicConfig(filename='network.log',
                     encoding='utf-8',
                     level=logging.INFO,
                     format="%(asctime)s - %(message)s")
-
 
 class NetworkSimulator:
     """
