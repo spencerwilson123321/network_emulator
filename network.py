@@ -60,7 +60,6 @@ class NetworkSimulator:
         self.lock.acquire()
         self.sendSocket.sendto(pickle.dumps(packet), addr)
         self.lock.release()
-        print(f"Sending: {packet}")
         logging.info(f"Sending: {packet}")
 
     def increment_lost_packets(self):
@@ -97,10 +96,8 @@ def main():
                 continue
         except BlockingIOError:
             continue
-        print(f"Received: {pkt}")
         logging.info(f"Received: {pkt}")
         if pkt.pkt_type == PacketType.EOT:
-            print("EOT detected, shutting down...")
             final_thread = threading.Thread(target=simulator.send_packet_to, args=(pkt.dst_addr, pkt,))
             # Waiting for the final thread to finish before shutting down the main thread. This prevents
             # the main thread from closing the final_thread before it has sent the last packet.
@@ -109,14 +106,12 @@ def main():
             break
         # Check BER and discard packet
         if simulator.discard_pkt():
-            print(f"Discarding: {pkt}")
             logging.info(f"Discarding: {pkt}")
             simulator.increment_lost_packets()
             continue
         else:
             # Start thread for each packet with avg_delay
             threading.Thread(target=simulator.send_packet_to, args=(pkt.dst_addr, pkt,)).start()
-    print(f"Total lost packets: {simulator.num_lost_packets}")
     logging.info(f"Total lost packets: {simulator.num_lost_packets}")
 
 
