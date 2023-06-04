@@ -21,24 +21,17 @@ class NetworkSimulator:
         sending packets to their destination in order to simulate propagation time and queueing/processing delay.
     """
 
-    def __init__(self, rIP, rPort, sIP, sPort, nIP, nPort_receive, nPort_send, ber, avg_delay):
-        self.receiverIP = rIP
-        self.receiverPort = rPort
-        self.senderIP = sIP
-        self.senderPort = sPort
-        self.networkIP = nIP
+    def __init__(self, configuration):
+        self.receiver_address = (configuration["receiver"]["ip"], int(configuration["receiver"]["port"]))
+        self.sender_address = (configuration["sender"]["ip"], int(configuration["sender"]["port"]))
+        self.network_address = (configuration["network"]["ip"], int(configuration["network"]["port"]))
         # The bit error rate, rate that packets are dropped.
-        self.ber = ber
+        self.loss_rate = configuration["network"]["loss_rate"]
         # Average delay each packet must wait before being sent to its destination.
-        self.avg_delay = avg_delay
-        self.networkReceivePort = nPort_receive
-        self.networkSendPort = nPort_send
-        self.receiveSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.sendSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.receiveSocket.bind((nIP, nPort_receive))
-        self.sendSocket.bind((nIP, nPort_send))
-        self.receiveSocket.setblocking(0)
-        self.sendSocket.setblocking(0)
+        self.avg_delay = configuration["network"]["delay"]
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.socket.bind((nIP, nPort_send))
+        self.socket.setblocking(0)
         self.lock = threading.Lock()
         self.num_lost_packets = 0
 
@@ -65,22 +58,9 @@ class NetworkSimulator:
 
 def main():
 
-    # Read config information from config file, sender info is on line 1.
-    with open("config") as file:
-        content = file.readlines()
-        options = content[0].split()
-        network_options = content[1].split()
-        rIP = options[0]
-        rPort = int(options[1])
-        sIP = options[2]
-        sPort = int(options[3])
-        nIP = options[4]
-        nRPort = int(options[5])
-        nSPort = int(options[6])
-        BER = float(network_options[0])
-        avg_delay = int(network_options[1])
-
-    simulator = NetworkSimulator(rIP, rPort, sIP, sPort, nIP, nRPort, nSPort, BER, avg_delay)
+    CONFIG = configparser.ConfigParser()
+    CONFIG.read("config.ini")
+    simulator = NetworkSimulator(CONFIG)
 
     # The main loop checks for incoming packets, for each packet that is received, it checks ber and
     # potentially drops the packet. If the packet is not dropped then the packet is sent to a new thread which
