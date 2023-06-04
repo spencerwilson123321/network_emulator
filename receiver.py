@@ -1,10 +1,12 @@
+import configparser
 import socket
 import pickle
 import sys
 import traceback
-from packet import Packet, PacketType
-from timer import Timer
 import logging
+
+from timer import Timer
+from packet import Packet, PacketType
 
 logging.basicConfig(filename='receiver.log',
                     encoding='utf-8',
@@ -17,10 +19,9 @@ class Receiver:
         the receiver protocols in the send-and-wait protocol.
     """
 
-    def __init__(self, receiverIP, receiverPort, senderIP, senderPort, nIP, nPort):
-        self.sender_address = (senderIP, senderPort)
-        self.receiver_address = (receiverIP, receiverPort)
-        self.network_address = (nIP, nPort)
+    def __init__(self, configuration):
+        self.receiver_address = (configuration["receiver"]["ip"], int(configuration["receiver"]["port"]))
+        self.network_address = (configuration["network"]["ip"], int(configuration["network"]["port"]))
         self.receiver_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.receiver_socket.bind(self.receiver_address)
         self.expected_seq_num = 0
@@ -75,16 +76,9 @@ class Receiver:
         self.receiver_socket.close()
 
 def main():
-    with open("config") as file:
-        content = file.readlines()
-        options = content[0].split()
-        rIP = options[0]
-        rPort = int(options[1])
-        sIP = options[2]
-        sPort = int(options[3])
-        nIP = options[4]
-        nPort = int(options[5])
-    receiver = Receiver(rIP, rPort, sIP, sPort, nIP, nPort)
+    CONFIG = configparser.ConfigParser()
+    CONFIG.read("config.ini")
+    receiver = Receiver(CONFIG)
     receiver.run_until_done()
 
 if __name__ == '__main__':
