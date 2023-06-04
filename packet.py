@@ -1,25 +1,19 @@
-from enum import Enum
 
+# Packet:
+# type: offset 0 (First Byte) ACK, DATA, EOT
+# number: offset 1 (Second byte) 0-255 circular
+# length:  offset 2 (Third byte) 0-255 bytes of data per data packet. 
+# data: length bytes starting at offset 3.
 
-class PacketType(Enum):
+def get_packet_type(pkt: bytes):
+    return int(pkt[0:1])
 
-    ACK = 0
-    DATA = 1
-    EOT = 2
+def get_packet_number(pkt: bytes):
+    return int(pkt[1:2])
 
+def get_packet_data_length(pkt: bytes):
+    return int(pkt[2:3])
 
-class Packet:
-
-    def __init__(self, pkt_type, seq_num, dst_addr):
-        self.pkt_type = pkt_type
-        self.seq_num = seq_num
-        self.dst_addr = dst_addr
-        if pkt_type == PacketType.DATA:
-            self.data = '0123456789'
-        if pkt_type == PacketType.ACK:
-            self.data = None
-        if pkt_type == PacketType.EOT:
-            self.data = None
-
-    def __str__(self):
-        return "pkt_type: {0}, seq_num: {1}, dst_addr: {2}".format(self.pkt_type.name, self.seq_num, self.dst_addr)
+def get_packet_data(pkt: bytes):
+    len = int(pkt[2:3])
+    return pkt[3:3+len]
