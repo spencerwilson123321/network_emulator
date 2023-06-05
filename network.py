@@ -3,9 +3,6 @@ import select
 import sys
 import traceback
 import socket
-import threading
-import random
-import time
 import logging
 import configparser
 import struct
