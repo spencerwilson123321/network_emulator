@@ -61,9 +61,7 @@ class NetworkSimulator:
         self.receiver_address = (configuration["receiver"]["ip"], int(configuration["receiver"]["port"]))
         self.sender_address = (configuration["sender"]["ip"], int(configuration["sender"]["port"]))
         self.network_address = (configuration["network"]["ip"], int(configuration["network"]["port"]))
-        # Packet loss rate
         self.loss_rate = float(configuration["network"]["loss_rate"])
-        # Delay each packet must wait before being sent to its destination.
         self.delay = float(configuration["network"]["delay"])
         self.thread_manager = ThreadManager()
         self.socket = SocketManager(int(configuration["network"]["port"]))
