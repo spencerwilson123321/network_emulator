@@ -102,6 +102,7 @@ class NetworkSimulator:
             thread.start()
             self.thread_manager.add(thread)
 
+
 if __name__ == '__main__':
     logging.basicConfig(filename='network.log',
                     encoding='utf-8',
