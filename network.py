@@ -1,13 +1,58 @@
-import asyncio
-import select 
 import sys
 import traceback
 import socket
 import logging
 import configparser
-import struct
+import random
+import time
+from threading import Lock, Thread, current_thread
 
 BUFFSIZE = 65535
+
+class ThreadManager:
+
+    def __init__(self):
+        self.threads = set()
+        self.lock = Lock()
+
+    def add(self, thread):
+        self.lock.acquire()
+        self.threads.add(thread)
+        self.lock.release()
+    
+    def remove(self, thread):
+        self.lock.acquire()
+        self.threads.remove(thread)
+        self.lock.release()
+
+    def close_threads(self):
+        self.lock.acquire()
+        for thread in self.threads:
+            thread.join()
+        self.lock.release()
+
+
+class SocketManager:
+
+    def __init__(self, port):
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.socket.bind(("", 8001))
+        self.lock = Lock()
+
+    def send(self, payload, destination):
+        self.lock.acquire()
+        self.socket.sendto(payload, destination)
+        logging.info(f"Sending {len(payload)} bytes to: {destination}")
+        self.lock.release()
+    
+    def recv(self):
+        return self.socket.recvfrom(BUFFSIZE)
+
+    def close(self):
+        self.lock.acquire()
+        self.socket.close()
+        self.lock.release()
+
 
 class NetworkSimulator:
 
@@ -16,61 +61,46 @@ class NetworkSimulator:
         self.receiver_address = (configuration["receiver"]["ip"], int(configuration["receiver"]["port"]))
         self.sender_address = (configuration["sender"]["ip"], int(configuration["sender"]["port"]))
         self.network_address = (configuration["network"]["ip"], int(configuration["network"]["port"]))
-
         # Packet loss rate
-        self.loss_rate = configuration["network"]["loss_rate"]
+        self.loss_rate = float(configuration["network"]["loss_rate"])
         # Delay each packet must wait before being sent to its destination.
-        self.delay = configuration["network"]["delay"]
+        self.delay = float(configuration["network"]["delay"])
+        self.thread_manager = ThreadManager()
+        self.socket = SocketManager(int(configuration["network"]["port"]))
+        self.lost_packets = 0
 
-        # Using raw sockets so that all types of traffic will be captured.
-        self.socket = socket.socket(socket.AF_PACKET, socket.SOCK_RAW)
-        self.socket.bind(("lo", 0x0800))
-        self.socket.setblocking(0)
-
-        self.poller = select.epoll()
-        self.poller.register(self.socket.fileno())
-        self.num_lost_packets = 0
-    
     def cleanup(self):
         print("\nShutting down network simulator...")
-        self.poller.unregister(self.socket.fileno())
+        self.thread_manager.close_threads()
         self.socket.close()
-    
-    def is_recognized_address(self, ip, port):
-        return (ip == self.sender_address[0] and port == self.sender_address[1]) or (ip == self.receiver_address[0] and port == self.receiver_address[1]) 
 
-    async def run_until_done(self):
-        """
-        while True:
-            # 1. Poll socket for packets.
-            # 2. Read raw packet.
-            # 2. Set the source IP address to our IP address.
-            # 3. Set the destination IP address to the mapped IP address.
-            # 4. Simulate packet loss.
-            # 5. Asyncio - Simulate network delay.
-            # 6. Transmit packet to mapped destination address if no loss.
-        """
-        ETH_HDR_LEN = 14
-        SRC_IP_OFFSET = ETH_HDR_LEN + 12
-        DST_IP_OFFSET = SRC_IP_OFFSET + 4
-        SRC_PORT_OFFSET = DST_IP_OFFSET + 4
-        DST_PORT_OFFSET = SRC_IP_OFFSET + 2
-        while True:
-            events = self.poller.poll()
-            for fd, event in events:
-                if event & select.EPOLLIN:
-                    # Read raw packet.
-                    packet, address = self.socket.recvfrom(BUFFSIZE)
-                    # Get source and destination address.
-                    source_ip = socket.inet_ntoa(packet[SRC_IP_OFFSET:SRC_IP_OFFSET+4])
-                    destination_ip = socket.inet_ntoa(packet[DST_IP_OFFSET:DST_IP_OFFSET+4])
-                    source_port = struct.unpack(packet[SRC_PORT_OFFSET:SRC_PORT_OFFSET+2])
-                    destination_port = struct.unpack(packet[DST_PORT_OFFSET:DST_PORT_OFFSET+2])
-                    # If unrecognized IP address, then skip.
-                    if not self.is_recognized_address(source_ip, source_port):
-                        continue
-                    # TODO: Network Address Translation
+    def translate(self, source_address):
+        if source_address == self.receiver_address:
+            return self.sender_address
+        if source_address == self.sender_address:
+            return self.receiver_address
+        return None
 
+    def transmit(self, payload, destination):
+        time.sleep(self.delay)
+        self.socket.send(payload, destination)
+        self.thread_manager.remove(current_thread())
+
+    def should_drop_packet(self):
+        return random.random() < self.loss_rate
+
+    def start(self):
+        while True:
+            payload, source = self.socket.recv()
+            destination = self.translate(source)
+            if not destination:
+                continue
+            if self.should_drop_packet():
+                self.lost_packets += 1
+                continue
+            thread = Thread(target=self.transmit, args=(payload, destination,))
+            thread.start()
+            self.thread_manager.add(thread)
 
 if __name__ == '__main__':
     logging.basicConfig(filename='network.log',
@@ -81,7 +111,7 @@ if __name__ == '__main__':
         CONFIG = configparser.ConfigParser()
         CONFIG.read("config.ini")
         simulator = NetworkSimulator(CONFIG)
-        asyncio.run(simulator.run_until_done())
+        simulator.start()
     except KeyboardInterrupt:
         simulator.cleanup()
     except Exception:
