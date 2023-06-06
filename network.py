@@ -1,10 +1,10 @@
-import sys
-import traceback
-import socket
 import logging
 import configparser
-import random
-import time
+from socket import socket, AF_INET, SOCK_DGRAM
+from traceback import print_exc
+from sys import stdout
+from time import sleep
+from random import random
 from threading import Lock, Thread, current_thread
 
 BUFFSIZE = 65535
@@ -35,7 +35,7 @@ class ThreadManager:
 class SocketManager:
 
     def __init__(self, port):
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.socket = socket(AF_INET, SOCK_DGRAM)
         self.socket.bind(("", 8001))
         self.lock = Lock()
 
@@ -80,12 +80,12 @@ class NetworkSimulator:
         return None
 
     def transmit(self, payload, destination):
-        time.sleep(self.delay)
+        sleep(self.delay)
         self.socket.send(payload, destination)
         self.thread_manager.remove(current_thread())
 
     def should_drop_packet(self):
-        return random.random() < self.loss_rate
+        return random() < self.loss_rate
 
     def start(self):
         while True:
@@ -113,7 +113,8 @@ if __name__ == '__main__':
         simulator.start()
     except KeyboardInterrupt:
         simulator.cleanup()
+        exit(0)
     except Exception:
         simulator.cleanup()
-        traceback.print_exc(file=sys.stdout)
-    sys.exit(-1)
+        print_exc(file=stdout)
+    exit(-1)
