@@ -6,4 +6,12 @@ This particular network simulator was designed to work with UDP traffic between 
 
 # Instructions
 
-TODO
+Use the configuration file to define the addresses of the receiver, sender, and network hosts. Then simply send traffic to the network host and it will simulate an unreliable network by forwarding the UDP packets and adding delay and dropping packets.
+
+# Running the Simulator
+
+Modify the config file and enter the following to run the application: 
+
+```
+python3 network.py
+```
