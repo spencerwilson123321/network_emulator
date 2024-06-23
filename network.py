@@ -1,7 +1,6 @@
 import logging
 import configparser
 from socket import socket, AF_INET, SOCK_DGRAM
-from traceback import print_exc
 from sys import stdout
 from time import sleep
 from random import random
@@ -114,7 +113,7 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         simulator.cleanup()
         exit(0)
-    except Exception:
+    except Exception as e:
         simulator.cleanup()
-        print_exc(file=stdout)
-    exit(-1)
+        print(e)
+
