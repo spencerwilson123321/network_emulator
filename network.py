@@ -1,5 +1,6 @@
 import logging
 import configparser
+import argparse
 from socket import socket, AF_INET, SOCK_DGRAM
 from sys import stdout
 from time import sleep
@@ -100,15 +101,23 @@ class NetworkSimulator:
             self.thread_manager.add(thread)
 
 
+def validate_config():
+    pass
+
+
 if __name__ == '__main__':
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config", required=True)
+    args = parser.parse_args()
     logging.basicConfig(filename='network.log',
                     encoding='utf-8',
                     level=logging.INFO,
                     format="%(asctime)s - %(message)s")
+    config = configparser.ConfigParser()
+    config.read("config.ini")
+    simulator = NetworkSimulator(config)
     try:
-        CONFIG = configparser.ConfigParser()
-        CONFIG.read("config.ini")
-        simulator = NetworkSimulator(CONFIG)
         simulator.start()
     except KeyboardInterrupt:
         simulator.cleanup()
