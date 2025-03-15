@@ -101,16 +101,12 @@ class NetworkSimulator:
             self.thread_manager.add(thread)
 
 
-def validate_config():
-    pass
-
-
 if __name__ == '__main__':
-
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", required=True)
+    parser.add_argument("--logfile", required=False, help="Optional. Write all output to this file, all output is sent to stdout by default.")
     args = parser.parse_args()
-    logging.basicConfig(filename='network.log',
+    logging.basicConfig(filename=args.logfile,
                     encoding='utf-8',
                     level=logging.INFO,
                     format="%(asctime)s - %(message)s")
